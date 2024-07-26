@@ -1,0 +1,52 @@
+---
+- name: Configure and deploy Node.js app
+  hosts: web
+  become: yes
+  tasks:
+    - name: Install Node.js
+      yum:
+        name: nodejs
+        state: present
+
+    - name: Install Git
+      yum:
+        name: git
+        state: present
+
+    - name: Clone the application repository
+      git:
+        repo: 'https://github.com/yashu1506/Task-1.git'
+        dest: /var/www/task1
+
+    - name: Install npm dependencies
+      command: npm install
+      args:
+        chdir: /var/www/task1
+
+    - name: Configure Nginx
+      blockinfile:
+        path: /etc/nginx/nginx.conf
+        block: |
+          server {
+              listen       80;
+              server_name  localhost;
+
+              location / {
+                  proxy_pass http://127.0.0.1:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+              }
+          }
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+
+    - name: Start the Node.js application
+      command: npm start
+      args:
+        chdir: /var/www/task1
